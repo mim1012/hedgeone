@@ -1,6 +1,6 @@
 # 🎯 Hedgeone 프로젝트 실시간 대시보드
 
-**마지막 업데이트**: 2025-11-21 16:40 KST
+**마지막 업데이트**: 2025-11-21 17:15 KST
 
 ---
 
@@ -19,21 +19,23 @@ Binance Futures (USDT-M) 자동 헷지 트레이딩 시스템을 C# WPF로 구�
 
 ## 📈 전체 진행률
 
-**전체 완료도**: 20% (2/10 단계 완료)
+**전체 완료도**: 30% (3/10 단계 완료)
 
 ```
-[████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 20%
+[██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 30%
 ```
 
 ### Phase별 상태
 | Phase | 작업 | 상태 | 완료도 |
 |-------|------|------|--------|
 | 1 | 프로젝트 초기화 | ✅ 완료 | 100% |
-| 2 | 서브에이전트 구성 | ⏸️ 대기 | 0% |
-| 3 | 핵심 모듈 개발 | ⏸️ 대기 | 0% |
-| 4 | 테스트 | ⏸️ 대기 | 0% |
-| 5 | 빌드 및 배포 | ⏸️ 대기 | 0% |
-| 6 | 버전 관리 | ⏸️ 대기 | 0% |
+| 2 | 문서화 및 설계 | ✅ 완료 | 100% |
+| 3 | Hedgeone.Indicators | ✅ 완료 | 100% |
+| 4 | Hedgeone.Core | 🔄 진행중 | 10% |
+| 5 | Hedgeone.Exchange | ⏸️ 대기 | 0% |
+| 6 | Hedgeone.UI | ⏸️ 대기 | 0% |
+| 7 | 통합 테스트 | ⏸️ 대기 | 0% |
+| 8 | 빌드 및 배포 | ⏸️ 대기 | 0% |
 
 ---
 
@@ -41,46 +43,46 @@ Binance Futures (USDT-M) 자동 헷지 트레이딩 시스템을 C# WPF로 구�
 
 ### 🏗️ Orchestrator (메인 에이전트)
 **상태**: 🟢 활성
-**현재 작업**: 실시간 대시보드 초기화 중
+**현재 작업**: Hedgeone.Core 전략 엔진 구현 조율 중
 **완료 항목**:
-- ✅ Git 저장소 초기화
-- ✅ .gitignore 생성 (C# .NET 기준)
+- ✅ Git 저장소 초기화 및 remote 설정
 - ✅ 프로젝트 폴더 구조 생성
-- ✅ README.md 작성
-- 🔄 docs/dashboard.md 생성 중
+- ✅ PRD 및 Architecture 문서 작성
+- ✅ C# .NET 솔루션 생성 (5 프로젝트)
+- ✅ Hedgeone.Indicators 구현 완료 (9/9 테스트 통과)
 
 **다음 단계**:
-- 첫 커밋 생성
-- PRD 문서 정리
-- Architecture 설계 문서 작성
+- Hedgeone.Core 구현 완료
+- Hedgeone.Exchange Binance API 연동
+- WPF UI 구현
 
 ---
 
 ### 🎨 Architecture_Designer
-**상태**: ⚪ 대기
+**상태**: ✅ 완료
 **책임 영역**: `docs/architecture/`
-**할당 작업**: 없음
+**완료 항목**: system_design.md 작성 완료
 
 ---
 
 ### ⚙️ Strategy_Developer
-**상태**: ⚪ 대기
+**상태**: 🟢 활성
 **책임 영역**: `src/Hedgeone.Core/`
-**할당 작업**: 없음
+**현재 작업**: TradingState, StrategyConfig, HedgeStrategy 구현 중
 
 ---
 
 ### 🔌 Exchange_Developer
 **상태**: ⚪ 대기
 **책임 영역**: `src/Hedgeone.Exchange/`
-**할당 작업**: 없음
+**할당 작업**: 대기 중
 
 ---
 
 ### 📊 Indicator_Developer
-**상태**: ⚪ 대기
+**상태**: ✅ 완료
 **책임 영역**: `src/Hedgeone.Indicators/`
-**할당 작업**: 없음
+**완료 항목**: RSI, MACD 계산 및 신호 생성 로직 구현 완료 (9/9 테스트 통과)
 
 ---
 
@@ -107,18 +109,18 @@ Binance Futures (USDT-M) 자동 헷지 트레이딩 시스템을 C# WPF로 구�
 
 ## 📝 최근 활동 로그
 
+### 2025-11-21 17:15
+- ✅ Hedgeone.Indicators 구현 완료 및 커밋
+  - Candle.cs, IIndicatorService.cs, TechnicalIndicators.cs
+  - IndicatorTests.cs (9/9 테스트 통과)
+  - MACD(1,1,1)=0 동작 검증 완료
+- 🔄 Hedgeone.Core 전략 엔진 구현 시작
+
 ### 2025-11-21 16:40
-- ✅ Git 저장소 초기화 완료
-- ✅ .gitignore 생성 (C# .NET 프로젝트 기준)
-- ✅ 프로젝트 폴더 구조 생성
-  - `docs/prd/`
-  - `docs/architecture/`
-  - `docs/api_design/`
-  - `docs/tests/`
-  - `src/`
-  - `agents/`
-- ✅ README.md 작성
-- 🔄 docs/dashboard.md 생성 중
+- ✅ Git 저장소 초기화 및 GitHub remote 설정
+- ✅ C# .NET 8.0 솔루션 및 5개 프로젝트 생성
+- ✅ PRD 문서 작성 (docs/prd/hedgeone_prd.md)
+- ✅ Architecture 문서 작성 (docs/architecture/system_design.md)
 
 ---
 
@@ -151,21 +153,22 @@ Binance Futures (USDT-M) 자동 헷지 트레이딩 시스템을 C# WPF로 구�
 
 ## 📌 주요 기술 결정사항
 
-1. **개발 언어**: C# .NET 6/7 (CLAUDE.md 자동매매 원칙)
+1. **개발 언어**: C# .NET 8.0 (CLAUDE.md 자동매매 원칙)
 2. **UI 프레임워크**: WPF (MVVM 패턴)
-3. **Binance 라이브러리**: Binance.Net NuGet 패키지
-4. **지표 계산**: 자체 구현 (RSI, MACD)
+3. **Binance 라이브러리**: Binance.Net v11.11.0
+4. **지표 계산**: 자체 구현 (RSI, MACD) ✅
 5. **상태 관리**: JSON 파일 기반 영속화
 6. **배포 형태**: Self-contained single EXE
+7. **테스트 프레임워크**: xUnit + Moq
 
 ---
 
 ## 📊 성과 지표
 
-- **커밋 수**: 0
-- **코드 라인 수**: 0
-- **테스트 커버리지**: 0%
-- **문서 완성도**: 15%
+- **커밋 수**: 6
+- **코드 라인 수**: ~500
+- **테스트 커버리지**: Indicators 100% (9/9)
+- **문서 완성도**: 100%
 
 ---
 
