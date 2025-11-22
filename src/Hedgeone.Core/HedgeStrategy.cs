@@ -128,6 +128,7 @@ public class HedgeStrategy : IHedgeStrategy
 
     /// <summary>
     /// 5분봉 업데이트 (신호 생성 및 포지션 관리)
+    /// 고객 메일 로직 기반 구현
     /// </summary>
     public void OnNew5m(string symbol, List<Candle> candles5m, decimal currentPrice, DateTime timestamp)
     {
@@ -139,97 +140,175 @@ public class HedgeStrategy : IHedgeStrategy
 
         var state = _states[symbol];
 
-        // 1. 청산 규칙 체크
-        if (_exitRules.ExitRuleHit(state, currentPrice, candles5m))
-        {
-            Console.WriteLine($"[5M-{symbol}] Exit rule triggered");
-            _ = CloseAllPositionsAsync(symbol);
-            return;
-        }
-
-        // 2. MaxFavorablePrice 업데이트
+        // MaxFavorablePrice 업데이트
         UpdateMaxFavorablePrice(state, currentPrice);
 
-        // 3. 신호 계산
+        // 신호 계산
         var longSignal = _indicators.SignalLong(candles5m, _config.RsiLength);
         var shortSignal = _indicators.SignalShort(candles5m, _config.RsiLength);
 
-        // 4. UP 대세 로직
+        // UP 대세 로직
         if (state.Regime == "UP")
         {
-            HandleUpRegime(symbol, state, currentPrice, longSignal);
+            HandleUpRegime(symbol, state, currentPrice, longSignal, shortSignal, candles5m);
         }
-        // 5. DOWN 대세 로직
+        // DOWN 대세 로직
         else if (state.Regime == "DOWN")
         {
-            HandleDownRegime(symbol, state, currentPrice, shortSignal);
+            HandleDownRegime(symbol, state, currentPrice, longSignal, shortSignal, candles5m);
         }
 
-        // 6. 상태 저장
+        // 상태 저장
         _ = _stateRepo.SaveAsync(symbol, state);
     }
 
     /// <summary>
-    /// UP 대세 처리 로직
+    /// UP 대세 처리 로직 (고객 메일 기반)
+    /// - 콜만 신규 진입, 풋은 헷지용
     /// </summary>
-    private void HandleUpRegime(string symbol, TradingState state, decimal currentPrice, bool longSignal)
+    private void HandleUpRegime(string symbol, TradingState state, decimal currentPrice, bool longSignal, bool shortSignal, List<Candle> candles5m)
     {
-        // Long 신호 발생 시 진입
+        var pnlCall = state.PnlCall(currentPrice);
+
+        // 1. 콜 신호 + 콜 포지션 없음 → 콜 진입
         if (longSignal && state.PosCall == 0)
         {
-            Console.WriteLine($"[UP-{symbol}] Long signal detected, entering LONG");
+            Console.WriteLine($"[UP-{symbol}] Long signal, entering LONG");
             _ = EnterLongAsync(symbol, currentPrice);
+
+            // 기존 풋 헷지가 있으면 무조건 청산
+            if (state.PosPut > 0)
+            {
+                Console.WriteLine($"[UP-{symbol}] Clearing PUT hedge unconditionally");
+                _ = CloseAllPutsAsync(symbol);
+            }
             return;
         }
 
-        // Long 포지션 손실 시 Short 헷지
+        // 2. 콜 보유 중 관리
         if (state.PosCall > 0)
         {
-            var pnlPct = state.PnlPctCall(currentPrice);
-            if (pnlPct <= _config.HedgeLossPct && state.PosPut == 0)
+            if (pnlCall >= 0)
             {
-                Console.WriteLine($"[UP-{symbol}] LONG loss={pnlPct:P2}, entering SHORT hedge");
-                _ = EnterShortAsync(symbol, currentPrice);
+                // 이익/본전: exit_rule_hit 체크
+                if (_exitRules.ExitRuleHit(state, currentPrice, candles5m))
+                {
+                    Console.WriteLine($"[UP-{symbol}] Exit rule hit (profit), closing all");
+                    _ = CloseAllPositionsAsync(symbol);
+                    return;
+                }
+            }
+            else
+            {
+                // 손실: 풋 헷지 진입 (없으면)
+                if (state.PosPut == 0)
+                {
+                    Console.WriteLine($"[UP-{symbol}] LONG in loss, entering PUT hedge");
+                    _ = EnterShortAsync(symbol, currentPrice);
+                }
             }
         }
 
-        // Long 신호 재발생 시 Short 헷지 청산
+        // 3. 콜 신호 재발 + 풋 헷지 보유 → 풋 헷지 즉시 청산 (손익 불문)
         if (longSignal && state.PosPut > 0)
         {
-            Console.WriteLine($"[UP-{symbol}] Long signal reappeared, closing SHORT hedge");
+            Console.WriteLine($"[UP-{symbol}] Long signal reappeared, closing PUT hedge (regardless of PnL)");
             _ = CloseAllPutsAsync(symbol);
+        }
+
+        // 4. 풋 신호 발생 + 콜 보유 중 → 손익에 따라 처리
+        if (shortSignal && state.PosCall > 0)
+        {
+            if (pnlCall >= 0)
+            {
+                // 이익이면 콜 청산 (이익 확정)
+                Console.WriteLine($"[UP-{symbol}] Short signal + LONG profit, closing LONG to lock profit");
+                _ = CloseAllCallsAsync(symbol);
+            }
+            else
+            {
+                // 손실이면 풋 헷지 진입
+                if (state.PosPut == 0)
+                {
+                    Console.WriteLine($"[UP-{symbol}] Short signal + LONG loss, entering PUT hedge");
+                    _ = EnterShortAsync(symbol, currentPrice);
+                }
+            }
         }
     }
 
     /// <summary>
-    /// DOWN 대세 처리 로직
+    /// DOWN 대세 처리 로직 (고객 메일 기반)
+    /// - 풋만 신규 진입, 콜은 헷지용
     /// </summary>
-    private void HandleDownRegime(string symbol, TradingState state, decimal currentPrice, bool shortSignal)
+    private void HandleDownRegime(string symbol, TradingState state, decimal currentPrice, bool longSignal, bool shortSignal, List<Candle> candles5m)
     {
-        // Short 신호 발생 시 진입
+        var pnlPut = state.PnlPut(currentPrice);
+
+        // 1. 풋 신호 + 풋 포지션 없음 → 풋 진입
         if (shortSignal && state.PosPut == 0)
         {
-            Console.WriteLine($"[DOWN-{symbol}] Short signal detected, entering SHORT");
+            Console.WriteLine($"[DOWN-{symbol}] Short signal, entering SHORT");
             _ = EnterShortAsync(symbol, currentPrice);
+
+            // 기존 콜 헷지가 있으면 무조건 청산
+            if (state.PosCall > 0)
+            {
+                Console.WriteLine($"[DOWN-{symbol}] Clearing CALL hedge unconditionally");
+                _ = CloseAllCallsAsync(symbol);
+            }
             return;
         }
 
-        // Short 포지션 손실 시 Long 헷지
+        // 2. 풋 보유 중 관리
         if (state.PosPut > 0)
         {
-            var pnlPct = state.PnlPctPut(currentPrice);
-            if (pnlPct <= _config.HedgeLossPct && state.PosCall == 0)
+            if (pnlPut >= 0)
             {
-                Console.WriteLine($"[DOWN-{symbol}] SHORT loss={pnlPct:P2}, entering LONG hedge");
-                _ = EnterLongAsync(symbol, currentPrice);
+                // 이익/본전: exit_rule_hit 체크
+                if (_exitRules.ExitRuleHit(state, currentPrice, candles5m))
+                {
+                    Console.WriteLine($"[DOWN-{symbol}] Exit rule hit (profit), closing all");
+                    _ = CloseAllPositionsAsync(symbol);
+                    return;
+                }
+            }
+            else
+            {
+                // 손실: 콜 헷지 진입 (없으면)
+                if (state.PosCall == 0)
+                {
+                    Console.WriteLine($"[DOWN-{symbol}] SHORT in loss, entering CALL hedge");
+                    _ = EnterLongAsync(symbol, currentPrice);
+                }
             }
         }
 
-        // Short 신호 재발생 시 Long 헷지 청산
+        // 3. 풋 신호 재발 + 콜 헷지 보유 → 콜 헷지 즉시 청산 (손익 불문)
         if (shortSignal && state.PosCall > 0)
         {
-            Console.WriteLine($"[DOWN-{symbol}] Short signal reappeared, closing LONG hedge");
+            Console.WriteLine($"[DOWN-{symbol}] Short signal reappeared, closing CALL hedge (regardless of PnL)");
             _ = CloseAllCallsAsync(symbol);
+        }
+
+        // 4. 콜 신호 발생 + 풋 보유 중 → 손익에 따라 처리
+        if (longSignal && state.PosPut > 0)
+        {
+            if (pnlPut >= 0)
+            {
+                // 이익이면 풋 청산 (이익 확정)
+                Console.WriteLine($"[DOWN-{symbol}] Long signal + SHORT profit, closing SHORT to lock profit");
+                _ = CloseAllPutsAsync(symbol);
+            }
+            else
+            {
+                // 손실이면 콜 헷지 진입
+                if (state.PosCall == 0)
+                {
+                    Console.WriteLine($"[DOWN-{symbol}] Long signal + SHORT loss, entering CALL hedge");
+                    _ = EnterLongAsync(symbol, currentPrice);
+                }
+            }
         }
     }
 

@@ -7,7 +7,7 @@ public class StrategyConfigViewModel : ViewModelBase
 {
     private string _apiKey = "";
     private string _apiSecret = "";
-    private string _selectedSymbol = "DOGEUSDT";
+    private string _selectedSymbol = "1000PEPEUSDT";
     private decimal _callSize = 10m;
     private decimal _takeProfitPct = 1.0m;
     private decimal _trailingPct = 0.5m;

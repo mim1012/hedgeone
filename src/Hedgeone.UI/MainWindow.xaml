@@ -8,6 +8,10 @@
         Title="Binance Auto Hedge Trader"
         Height="700" Width="900"
         WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <local:SymbolToBoolConverter x:Key="SymbolToBoolConverter"/>
+    </Window.Resources>
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -46,13 +50,18 @@
                 <!-- 심볼 선택 -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                     <TextBlock Text="심볼 선택:" VerticalAlignment="Center" Width="100"/>
-                    <RadioButton Content="DOGEUSDT"
-                                 IsChecked="{Binding Config.SelectedSymbol, Converter={StaticResource SymbolToBoolConverter}, ConverterParameter=DOGEUSDT}"
+                    <RadioButton Content="1000PEPEUSDT"
+                                 IsChecked="{Binding Config.SelectedSymbol, Converter={StaticResource SymbolToBoolConverter}, ConverterParameter=1000PEPEUSDT}"
                                  GroupName="Symbol"
                                  Margin="0,0,20,0"
                                  VerticalAlignment="Center"/>
-                    <RadioButton Content="ALGOUSDT"
-                                 IsChecked="{Binding Config.SelectedSymbol, Converter={StaticResource SymbolToBoolConverter}, ConverterParameter=ALGOUSDT}"
+                    <RadioButton Content="CHZUSDT"
+                                 IsChecked="{Binding Config.SelectedSymbol, Converter={StaticResource SymbolToBoolConverter}, ConverterParameter=CHZUSDT}"
+                                 GroupName="Symbol"
+                                 Margin="0,0,20,0"
+                                 VerticalAlignment="Center"/>
+                    <RadioButton Content="BIOUSDT"
+                                 IsChecked="{Binding Config.SelectedSymbol, Converter={StaticResource SymbolToBoolConverter}, ConverterParameter=BIOUSDT}"
                                  GroupName="Symbol"
                                  VerticalAlignment="Center"/>
                 </StackPanel>
@@ -148,8 +157,4 @@
                     Foreground="White"/>
         </StackPanel>
     </Grid>
-
-    <Window.Resources>
-        <local:SymbolToBoolConverter x:Key="SymbolToBoolConverter"/>
-    </Window.Resources>
 </Window>
